@@ -1,0 +1,25 @@
+# Fichiers et dossiers Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Fichiers de logs
+logs/
+*.log
+
+# Environnements virtuels
+venv/
+env/
+*.env
+
+# Fichiers de configuration spécifiques à l'IDE
+.vscode/
+.idea/
+
+# Fichiers de build / distribution
+build/
+dist/
+*.egg-info/
+
+# Fichiers de cache
+*.cache
