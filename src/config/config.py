@@ -21,17 +21,41 @@ COLOR_MAP = {
 
 # Organisation des couches x, y du graphe
 LAYER_CONFIG = {
+        "virtual": (-8, 5),
         "segment_3mer": (-4, 1),
         "base": (1, 15),
-        "classification": (2, 7),
-        "motif": (3, 8),
-        "gene": (4, 8),
-        "process": (5, 6),
-        "correcteur": (6, 6),
-        "cis": (7, 6),
-        "trans": (8, 10),
-        "virtual": (-6, 5)
+        "classification": (3, 7),
+        "splicing": (5, 8),             
+        "motif": (7, 8),
+        "gene": (9, 8),
+        "splicing": (11, 7), 
+        "process": (13, 6),
+        "correcteur": (15, 6),
+        "epigenetics": (17, 4),         
+        "post_transcription": (19, 4),  
+        "chromatin": (21, 4),
+        "cis": (23, 6),
+        "trans": (25, 10),       
     }
+"""
+LAYER_CONFIG = {
+    "virtual": (-10, 5),             # Nœuds virtuels en marge
+    "segment_3mer": (-8, 15),         # Couche codons
+    "base": (-6, 25),                # Bases nucléotidiques
+    "classification": (-4, 20),      # Purines / Pyrimidines
+    "motif": (-2, 18),               # Motifs (Promoteur, Exon, Intron, etc.)
+    "gene": (0, 16),                 # Nœud Gene
+    "splicing": (2, 14),             # Épissage
+    "process": (4, 12),              # Processus (Méthylation, Réparation)
+    "correcteur": (6, 12),           # Code correcteur
+    "epigenetics": (8, 10),          # Modifications épigénétiques
+    "post_transcription": (10, 10),  # Régulation post-transcriptionnelle
+    "chromatin": (12, 10),           # Structure chromatinienne
+    "cis": (14, 12),                 # Régulation cis
+    "trans": (16, 14)                # Régulation trans
+}
+"""
+
 
 # Parametres des nodes et textes
 NODE_SIZE = 400
@@ -60,7 +84,8 @@ LOG_FILE_MODE = 'w'  # 'w' pour écraser à chaque démarrage, 'a' pour ajouter
 # ----- Paramètres d'Optimisation -----
 # Coefficients pour la fonction de coût dans l'optimisation du graphe (moyenne), build, stabilité relation, taux erreur
 ALPHA = 0.2
-BETA = 0.8
+#BETA = 0.8
+BETA = 100
 GAMMA = 0.5
 
 # Message à traduire par défaut

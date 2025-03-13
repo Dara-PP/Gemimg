@@ -20,5 +20,3 @@ def add_code_correcteur(G):
                    weight_cost=const.DEFAULT_STABILITY_BUILD_CODE, 
                    weight_stability=const.DEFAULT_STABILITY_BUILD_CODE, 
                    weight_error=const.DEFAULT_ERROR_BUILD_CODE)
-
-

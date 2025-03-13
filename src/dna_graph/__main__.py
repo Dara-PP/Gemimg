@@ -9,7 +9,7 @@ from dna_graph.codec.encode_decode import convert_message_to_bases, decode_messa
 from dna_graph.core.optimisation import compute_path_weight, dijkstra, bellman_ford, astar
 from dna_graph.bio.gene_expression import simulate_gene_expression
 from config.config import LOG_FILE, LOG_LEVEL,LOG_FORMAT, LOG_FILE_MODE, ALPHA, BETA, GAMMA, DEFAULT_MESSAGE, MANDATORY_NODES, LAYER_CONFIG, PROMOTER, TERMINATION_SIGNAL, ADRN
-
+import time
 import logging
 
 def setup_logging():
@@ -125,9 +125,13 @@ def compute(G, start, end, ALPHA , BETA, GAMMA, base_list, message):
     Utilise les algorithmes d'optimisation pour recherche le chemin le plus optimisé
     """
     logging.info("Recherche du chemin contraint...")
-    #best_path = bellman_ford(G, start, end, MANDATORY_NODES, ALPHA, BETA, GAMMA)
+    start_time = time.perf_counter()
+    best_path = bellman_ford(G, start, end, MANDATORY_NODES, ALPHA, BETA, GAMMA)
     #best_path = astar(G, start, end, MANDATORY_NODES, ALPHA, BETA, GAMMA, heuristic=lambda u, v: 0)
-    best_path = dijkstra(G, start, end, MANDATORY_NODES, ALPHA, BETA, GAMMA)
+    #best_path = dijkstra(G, start, end, MANDATORY_NODES, ALPHA, BETA, GAMMA)
+    end_time = time.perf_counter()
+    execution_time = end_time - start_time
+    print(f"Temps d'exécution : {execution_time:.4f} secondes")
 
     logging.info(f"Chemin contraint trouve: {best_path}")
     print(f"Chemin complet trouvé: {best_path}")

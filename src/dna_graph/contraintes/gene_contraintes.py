@@ -1,6 +1,29 @@
 import networkx as nx
 from config.config import PROMOTER, TERMINATION_SIGNAL, MANDATORY_NODES
 
+def validate_restriction_sites(dna_sequence: str, restriction_sites: list = None) -> bool:
+    """
+    Vérifie que la séquence d'ADN ne contient pas de motifs de restriction enzymatique indésirables.
+    Par défaut, on vérifie pour le motif 'GAATTC' (site de EcoRI).
+    """
+    if restriction_sites is None:
+        restriction_sites = ["GAATTC"]  
+    for site in restriction_sites:
+        if site in dna_sequence:
+            return False
+    return True
+
+
+def validate_gc_ratio(dna_sequence: str, lower_bound: float = 0.40, upper_bound: float = 0.60) -> bool:
+    """
+    Vérifie que le pourcentage de GC de la séquence d'ADN est compris entre lower_bound et upper_bound.
+    """
+    if len(dna_sequence) == 0:
+        return False
+    gc_count = dna_sequence.count("G") + dna_sequence.count("C")
+    gc_ratio = gc_count / len(dna_sequence)
+    return lower_bound <= gc_ratio <= upper_bound
+
 def validate_promoter(dna_sequence: str) -> bool:
     """Vérifie que le promoteur est présent dans la séquence ADN."""
     return PROMOTER in dna_sequence
@@ -72,6 +95,15 @@ def validate_gene_expression_constraints(dna_sequence, G) -> dict:
 
     errors.update(validate_classification_nodes(G))
     errors.update(validate_complementarity_edges(G))
+
+        # Nouvelle contrainte : éviter les sites de restriction enzymatique
+    if not validate_restriction_sites(dna_sequence):
+        errors["restriction_site"] = "La séquence ADN contient des sites de restriction enzymatique indésirables."
+    
+    # Nouvelle contrainte : vérifier le ratio GC (40-60%)
+    if not validate_gc_ratio(dna_sequence):
+        errors["gc_ratio"] = "La séquence ADN ne respecte pas le ratio GC requis (40-60%)."
+
     
     return {"is_valid": len(errors) == 0, "errors": errors}
 

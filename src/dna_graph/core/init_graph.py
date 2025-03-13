@@ -4,6 +4,7 @@ from dna_graph.core.graph_layers import (
     add_motif_layer,
     add_segment_layer,
     add_regulation_layer,
+    add_additional_layers,
 )
 def init_graph():
     """
@@ -27,5 +28,7 @@ def init_graph():
     add_motif_layer(G)
     add_segment_layer(G)
     add_regulation_layer(G)
+    add_additional_layers(G)
+
 
     return G

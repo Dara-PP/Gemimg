@@ -1,5 +1,4 @@
-# fichier: dna_graph/contraintes/gene_expression.py
-from dna_graph.bio.tran_tran import transcribe, translate
+from dna_graph.bio.tran_tran import modify_dna_sequence, transcribe, translate
 
 def simulate_gene_expression(dna_sequence: str) -> str:
     """
@@ -15,8 +14,11 @@ def simulate_gene_expression(dna_sequence: str) -> str:
     Retourne :
       - protein (str) : La protéine synthétisée.
     """
+    # Étape 0 : Modifier la séquence d'ADN pour simuler les mutations
+    mutated_dna_sequence = modify_dna_sequence(dna_sequence)
+    
     # Étape 1 : Transcription
-    mRNA = transcribe(dna_sequence)
+    mRNA = transcribe(mutated_dna_sequence)
     
     # Étape 2 : Traduction
     protein = translate(mRNA)

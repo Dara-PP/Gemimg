@@ -1,6 +1,7 @@
 import logging
 from config.config import PROMOTER, TERMINATION_SIGNAL
 import dna_graph.bio.genetic_code as gen_code
+import random
 
 def codon_to_amino_acid(codon: str) -> str:
     """
@@ -76,3 +77,70 @@ def translate(mRNA: str) -> str:
     
     return ''.join(protein)
 
+def introduce_mutations(dna_sequence: str, mutation_rate: float = 0.01) -> str:
+    """
+    Introduit des mutations dans la séquence d'ADN en substituant aléatoirement des nucléotides,
+    avec un taux de mutation donné (par exemple, 1%).
+    
+    Paramètres :
+      - dna_sequence (str) : La séquence d'ADN originale.
+      - mutation_rate (float) : Probabilité qu'une position soit mutée.
+      
+    Retourne :
+      - mutated_sequence (str) : La séquence d'ADN après mutation.
+    """
+    nucleotides = ["A", "T", "C", "G"]
+    mutated_sequence = list(dna_sequence)
+    for i in range(len(mutated_sequence)):
+        if random.random() < mutation_rate:
+            current = mutated_sequence[i]
+            alternatives = [n for n in nucleotides if n != current]
+            mutated_sequence[i] = random.choice(alternatives)
+    return "".join(mutated_sequence)
+
+def introduce_insertion(dna_sequence: str, insertion_rate: float = 0.005) -> str:
+    """
+    Introduit des insertions aléatoires dans la séquence d'ADN.
+    
+    Paramètres :
+      - dna_sequence (str) : La séquence d'ADN originale.
+      - insertion_rate (float) : Probabilité d'insertion après chaque nucléotide.
+      
+    Retourne :
+      - new_sequence (str) : La séquence d'ADN avec des insertions.
+    """
+    nucleotides = ["A", "T", "C", "G"]
+    result = []
+    for nucleotide in dna_sequence:
+        result.append(nucleotide)
+        if random.random() < insertion_rate:
+            result.append(random.choice(nucleotides))
+    return "".join(result)
+
+def introduce_deletion(dna_sequence: str, deletion_rate: float = 0.005) -> str:
+    """
+    Introduit des délétions aléatoires dans la séquence d'ADN.
+    
+    Paramètres :
+      - dna_sequence (str) : La séquence d'ADN originale.
+      - deletion_rate (float) : Probabilité de supprimer un nucléotide.
+      
+    Retourne :
+      - new_sequence (str) : La séquence d'ADN après suppression de certains nucléotides.
+    """
+    result = []
+    for nucleotide in dna_sequence:
+        if random.random() >= deletion_rate:
+            result.append(nucleotide)
+    return "".join(result)
+
+def modify_dna_sequence(dna_sequence: str, mutation_rate: float = 0.01,
+                        insertion_rate: float = 0.005, deletion_rate: float = 0.005) -> str:
+    """
+    Applique successivement des mutations par substitution, insertion et délétion sur la séquence d'ADN.
+    Cela modifie directement la séquence et peut altérer des régions critiques (promoteur, codons, etc.).
+    """
+    seq = introduce_mutations(dna_sequence, mutation_rate)
+    seq = introduce_insertion(seq, insertion_rate)
+    seq = introduce_deletion(seq, deletion_rate)
+    return seq

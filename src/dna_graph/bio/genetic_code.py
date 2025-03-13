@@ -224,3 +224,37 @@ def add_trans_factors(G):
                    weight_cost=const.DEFAULT_COST_BUILD_TF2, 
                    weight_stability=const.DEFAULT_STABILITY_TF2, 
                    weight_error=const.DEFAULT_ERROR_TF2)
+        
+
+def add_splicing_layer(G):
+    """
+    Ajoute une couche d'épissage et de maturation de l'ARN.
+    On crée le nœud "Spliceosome" et on le connecte aux nœuds "Exon" et "Intron"
+    pour simuler l'action du spliceosome sur l'ARN pré-messager.
+    """
+    G.add_node("Spliceosome", type="splicing", label="Spliceosome")
+    
+    # Connexions avec Exon et Intron (présumés créés dans add_motifs)
+    if "Exon" in G:
+        G.add_edge("Spliceosome", "Exon", interaction="Epissage",
+                   weight_cost=0.2, weight_stability=0.85, weight_error=0.05)
+    if "Intron" in G:
+        G.add_edge("Spliceosome", "Intron", interaction="Epissage",
+                   weight_cost=0.2, weight_stability=0.85, weight_error=0.05)
+        
+def add_epigenetics_layer(G):
+    """
+    Ajoute une couche d'épigenétique détaillée.
+    On ajoute des nœuds pour "Histone_Acetylation" et "Histone_Methylation"
+    et on les connecte au nœud "Gene" pour moduler l'expression.
+    """
+    G.add_node("Histone_Acetylation", type="epigenetics", label="Histone Acetylation")
+    G.add_node("Histone_Methylation", type="epigenetics", label="Histone Methylation")
+    
+    if "Gene" in G:
+        G.add_edge("Histone_Acetylation", "Gene", interaction="Modulation",
+                   weight_cost=0.15, weight_stability=0.90, weight_error=0.05)
+        G.add_edge("Histone_Methylation", "Gene", interaction="Modulation",
+                   weight_cost=0.15, weight_stability=0.90, weight_error=0.05)
+
+

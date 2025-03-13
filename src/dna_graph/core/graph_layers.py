@@ -8,7 +8,9 @@ from dna_graph.bio.genetic_code import (
     add_processes,
     add_cis_elements,
     add_trans_factors,
-    add_degeneracy_edges
+    add_degeneracy_edges,
+    add_epigenetics_layer,
+    add_splicing_layer
 )
 
 def add_bases_layer(G):
@@ -32,3 +34,7 @@ def add_regulation_layer(G):
     """Configure la couche de régulation avec les éléments cis et trans."""
     add_cis_elements(G)
     add_trans_factors(G)
+
+def add_additional_layers(G): # temp peut etre test
+    add_splicing_layer(G)
+    add_epigenetics_layer(G)
