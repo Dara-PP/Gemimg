@@ -32,15 +32,12 @@ Genimg est un projet qui permet de convertir un message texte en une séquence d
   pip install -e .
 
 ## Utilisation
-```bash
+- **commands**  
+  ```bash
   dna_graph [-h] [-m MESSAGE] [--alpha ALPHA] [--beta BETA] [--gamma GAMMA] [--version]
 
-- **Usage**  
+- **Simple use**    
   ```bash
   dna_graph -m "Votre message ici" --alpha 0.2 --beta 0.8 --gamma 0.5    
-
-- **Désinstallation**
-  ```bash
-  pip uninstall dna_graph
 
   
