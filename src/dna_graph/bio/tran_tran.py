@@ -77,7 +77,7 @@ def translate(mRNA: str) -> str:
     
     return ''.join(protein)
 
-def introduce_mutations(dna_sequence: str, mutation_rate: float = 0.01) -> str:
+def introduce_mutations(dna_sequence: str, mutation_rate) -> str:
     """
     Introduit des mutations dans la séquence d'ADN en substituant aléatoirement des nucléotides,
     avec un taux de mutation donné (par exemple, 1%).
@@ -98,7 +98,7 @@ def introduce_mutations(dna_sequence: str, mutation_rate: float = 0.01) -> str:
             mutated_sequence[i] = random.choice(alternatives)
     return "".join(mutated_sequence)
 
-def introduce_insertion(dna_sequence: str, insertion_rate: float = 0.005) -> str:
+def introduce_insertion(dna_sequence: str, insertion_rate) -> str:
     """
     Introduit des insertions aléatoires dans la séquence d'ADN.
     
@@ -117,7 +117,7 @@ def introduce_insertion(dna_sequence: str, insertion_rate: float = 0.005) -> str
             result.append(random.choice(nucleotides))
     return "".join(result)
 
-def introduce_deletion(dna_sequence: str, deletion_rate: float = 0.005) -> str:
+def introduce_deletion(dna_sequence: str, deletion_rate) -> str:
     """
     Introduit des délétions aléatoires dans la séquence d'ADN.
     
@@ -136,11 +136,24 @@ def introduce_deletion(dna_sequence: str, deletion_rate: float = 0.005) -> str:
 
 def modify_dna_sequence(dna_sequence: str, mutation_rate: float = 0.01,
                         insertion_rate: float = 0.005, deletion_rate: float = 0.005) -> str:
+    #dna_sequence: str, mutation_rate: float = 0.01, insertion_rate: float = 0.005, deletion_rate: float = 0.005
     """
     Applique successivement des mutations par substitution, insertion et délétion sur la séquence d'ADN.
     Cela modifie directement la séquence et peut altérer des régions critiques (promoteur, codons, etc.).
     """
-    seq = introduce_mutations(dna_sequence, mutation_rate)
-    seq = introduce_insertion(seq, insertion_rate)
-    seq = introduce_deletion(seq, deletion_rate)
-    return seq
+    if dna_sequence.startswith(PROMOTER):
+        promoter_part = dna_sequence[:len(PROMOTER)]
+        # On suppose que le start codon (ATG) occupe les 3 bases suivant le promoteur
+        start_codon = dna_sequence[len(PROMOTER):len(PROMOTER)+3]
+        rest = dna_sequence[len(PROMOTER)+3:]
+        # Appliquer les modifications uniquement sur la partie après le start codon
+        rest = introduce_mutations(rest, mutation_rate)
+        rest = introduce_insertion(rest, insertion_rate)
+        rest = introduce_deletion(rest, deletion_rate)
+        return promoter_part + start_codon + rest
+    else:
+        # Si le promoteur n'est pas détecté, on applique les modifications sur toute la séquence
+        seq = introduce_mutations(dna_sequence, mutation_rate)
+        seq = introduce_insertion(seq, insertion_rate)
+        seq = introduce_deletion(seq, deletion_rate)
+        return seq

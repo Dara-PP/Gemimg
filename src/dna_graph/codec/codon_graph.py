@@ -16,53 +16,92 @@ def build_aa_to_codons(genetic_code, include_stop=False):
         aa_to_codons.setdefault(aa, []).append(codon)
     return aa_to_codons
 
+def add_edge_if_not_exists(G, u, v, **attrs):
+    if not G.has_edge(u, v):
+        G.add_edge(u, v, **attrs)
+
 def add_codon_subgraph_bio(G, base_list, genetic_code, aa_to_codons):
     """
     Ajoute un sous-graphe codon au graphe G en utilisant la séquence de bases.
+    Crée un graphe en couches permettant des chemins alternatifs (via la dégénérescence)
+    tout en évitant les doublons.
     
-    La séquence est découpée en groupes de 3 bases (codons). Pour chaque codon,
-    un nœud est créé avec un label identifiant le codon.
-    
-    En plus, cette fonction crée explicitement deux nœuds "start" et "end" de type "virtual"
-    qui servent de points de raccord pour le chemin retour vers le stop de l'ADN.
-    
-    Le chemin final est constitué de la suite : [start] + liste des nœuds codon + [end].
-    
-    Paramètres :
-      - G : graphe NetworkX.
-      - base_list : liste des bases générées.
-      - genetic_code : dictionnaire codon -> acide aminé.
-      - aa_to_codons : dictionnaire acide aminé -> liste de codons.
-      
     Retourne :
       - (start, end) : tuple contenant le nœud "start" et le nœud "end".
     """
-    # Création explicite des nœuds "start" et "end" avec type "virtual"
-    start = "start"
-    end = "end"
-    G.add_node(start, type="virtual", label="Start")
-    G.add_node(end, type="virtual", label="End")
-    
-    # Découper la séquence en codons (groupes de 3 bases)
-    codon_nodes = []
-    for i in range(0, len(base_list), 3):
-        codon = ''.join(base_list[i:i+3])
-        if len(codon) < 3:
-            break
-        node = f"Seg({codon})"
-        G.add_node(node, type="segment_3mer", label=codon)
-        codon_nodes.append(node)
-    
-    # Construire le chemin complet : start -> codon_nodes -> end
-    full_path_nodes = [start] + codon_nodes + [end]
-    
-    # Ajouter les arêtes entre chaque noeud successif du chemin
-    for i in range(len(full_path_nodes) - 1):
-        G.add_edge(full_path_nodes[i], full_path_nodes[i+1],
-                   interaction="Codon_Path",
-                   weight_cost=0.5,
-                   weight_stability=0.9,
-                   weight_error=0.1)
-    
-    return start, end
+    start, end = "start", "end"
+    for node, label in [(start, "Start"), (end, "End")]:
+        if node not in G:
+            G.add_node(node, type="virtual", label=label)
 
+    num_codons = len(base_list) // 3
+    layers = []
+    for pos in range(num_codons):
+        # Extraire le codon du message pour cette position
+        msg_codon = "".join(base_list[pos*3: pos*3+3])
+        aa = genetic_code.get(msg_codon)
+        # Récupère les options pour l'acide aminé, ou garde le codon du message s'il n'est pas reconnu
+        codon_options = aa_to_codons.get(aa, [msg_codon]) if aa is not None else [msg_codon]
+        # Enlever les doublons tout en conservant l'ordre
+        seen = set()
+        codon_options = [c for c in codon_options if c not in seen and not seen.add(c)]
+        
+        layer_nodes = []
+        for codon in codon_options:
+            node_name = f"Seg({codon})_pos{pos}"
+            # Marquer comme "préféré" si c'est le codon issu du message
+            preferred = (codon == msg_codon)
+            if node_name not in G:
+                G.add_node(node_name, type="segment_3mer", label=codon, preferred=preferred)
+            layer_nodes.append(node_name)
+        layers.append(layer_nodes)
+
+    # Connexion du nœud start à la première couche
+    if layers:
+        for node in layers[0]:
+            add_edge_if_not_exists(G, start, node,
+                interaction="Codon_Path",
+                weight_cost=0.5,
+                weight_stability=0.9,
+                weight_error=0.1,
+                display=False)
+
+    # Connexion entre chaque couche
+    for i in range(len(layers) - 1):
+        for u in layers[i]:
+            for v in layers[i+1]:
+                penalty = 0.1 if not G.nodes[v].get("preferred", False) else 0.0
+                add_edge_if_not_exists(G, u, v,
+                    interaction="Codon_Path",
+                    weight_cost=0.5 + penalty,
+                    weight_stability=0.9,
+                    weight_error=0.1)
+
+    # Connexion de la dernière couche au nœud end
+    if layers:
+        for node in layers[-1]:
+            add_edge_if_not_exists(G, node, end,
+                interaction="Codon_Path",
+                weight_cost=0.5,
+                weight_stability=0.9,
+                weight_error=0.1,
+                display=False)
+
+    # Connecter 'Promoteur' aux nœuds préférés de la première et dernière couche
+    if "Promoteur" in G and layers:
+        first_pref = next((node for node in layers[0] if G.nodes[node].get("preferred", False)), layers[0][0])
+        add_edge_if_not_exists(G, "Promoteur", first_pref,
+            interaction="Codon_Path",
+            weight_cost=0.5,
+            weight_stability=0.9,
+            weight_error=0.1,
+            display=True)
+        last_pref = next((node for node in layers[-1] if G.nodes[node].get("preferred", False)), layers[-1][0])
+        add_edge_if_not_exists(G, last_pref, "Promoteur",
+            interaction="Codon_Path",
+            weight_cost=0.5,
+            weight_stability=0.9,
+            weight_error=0.1,
+            display=True)
+
+    return start, end

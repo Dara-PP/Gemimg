@@ -249,7 +249,6 @@ def add_epigenetics_layer(G):
     et on les connecte au nœud "Gene" pour moduler l'expression.
     """
     G.add_node("Histone_Acetylation", type="epigenetics", label="Histone Acetylation")
-    G.add_node("Histone_Methylation", type="epigenetics", label="Histone Methylation")
     
     if "Gene" in G:
         G.add_edge("Histone_Acetylation", "Gene", interaction="Modulation",

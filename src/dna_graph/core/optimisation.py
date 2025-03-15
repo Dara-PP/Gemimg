@@ -145,3 +145,61 @@ def astar(G, start_node, end_node, mandatory_nodes, alpha, beta, gamma, heuristi
     )
     full_path.extend(segment[1:])
     return full_path
+
+def compute_on_layered_graph(G, global_alpha, global_beta, global_gamma, algorithm, heuristic=lambda u, v: 0):
+    # Regrouper les nœuds par couche à partir de leur nom "i_j"
+    layers = {}
+    for node in G.nodes():
+        try:
+            layer_index = int(node.split('_')[0])
+            layers.setdefault(layer_index, []).append(node)
+        except (ValueError, IndexError):
+            continue  # Ignorer les noeuds dont le nom ne suit pas le format
+
+    if not layers:
+        print("Aucune information de couche n'a pu être extraite.")
+        return None
+
+    start_layer = min(layers.keys())
+    end_layer = max(layers.keys())
+    start = layers[start_layer][0]
+    end = layers[end_layer][0]
+
+    # Fonction de coût combinant les poids d'arête et les attributs des noeuds
+    def multi_criteria(u, v, data):
+        # Valeurs d'arête avec valeurs par défaut si non définies
+        cost_edge = data.get("weight_cost", 1.0)
+        stability_edge = data.get("weight_stability", 1.0)
+        error_edge = data.get("weight_error", 0.0)
+        # Valeurs du noeud de destination (vous pouvez aussi combiner source et destination)
+        node_data = G.nodes[v]
+        node_alpha = node_data.get("alpha", 1.0)
+        node_beta = node_data.get("beta", 1.0)
+        node_gamma = node_data.get("gamma", 1.0)
+        # Combiner les pondérations globales et celles du noeud
+        cost = (global_alpha * node_alpha) * cost_edge + \
+               (global_beta * node_beta) * (1 - stability_edge) + \
+               (global_gamma * node_gamma) * error_edge
+        return cost
+
+    try:
+        if algorithm.lower() == "dijkstra":
+            best_path = nx.dijkstra_path(G, start, end, weight=lambda u, v, d: multi_criteria(u, v, d))
+        elif algorithm.lower() == "bellman_ford":
+            best_path = nx.bellman_ford_path(G, start, end, weight=lambda u, v, d: multi_criteria(u, v, d))
+        elif algorithm.lower() == "astar":
+            best_path = nx.astar_path(G, start, end, heuristic=heuristic,
+                                      weight=lambda u, v, d: multi_criteria(u, v, d))
+        elif algorithm.lower() == "bfs":
+            best_path = nx.shortest_path(G, start, end)
+        elif algorithm.lower() == "dfs":
+            best_path = list(nx.dfs_tree(G, source=start).nodes())
+            if end not in best_path:
+                raise ValueError(f"Le nœud {end} n'est pas accessible en DFS depuis {start}.")
+            best_path = nx.shortest_path(G, start, end)
+        else:
+            raise ValueError(f"Algorithme non supporté : {algorithm}")
+        return best_path
+    except Exception as e:
+        print("Erreur lors de la recherche sur le second graphe :", e)
+        return None

@@ -8,61 +8,48 @@ YSIZE = 7
 
 # Palette couleur du graphe
 COLOR_MAP = {
-        "base": "lightblue",
-        "classification": "lightgreen",
-        "motif": "orange",
-        "process": "yellow",
-        "correcteur": "plum",
-        "segment_3mer": "pink",
-        "cis": "violet",
-        "trans": "grey",
-        "virtual": "red"
-    }
-
-# Organisation des couches x, y du graphe
-LAYER_CONFIG = {
-        "virtual": (-8, 5),
-        "segment_3mer": (-4, 1),
-        "base": (1, 15),
-        "classification": (3, 7),
-        "splicing": (5, 8),             
-        "motif": (7, 8),
-        "gene": (9, 8),
-        "splicing": (11, 7), 
-        "process": (13, 6),
-        "correcteur": (15, 6),
-        "epigenetics": (17, 4),         
-        "post_transcription": (19, 4),  
-        "chromatin": (21, 4),
-        "cis": (23, 6),
-        "trans": (25, 10),       
-    }
-"""
-LAYER_CONFIG = {
-    "virtual": (-10, 5),             # Nœuds virtuels en marge
-    "segment_3mer": (-8, 15),         # Couche codons
-    "base": (-6, 25),                # Bases nucléotidiques
-    "classification": (-4, 20),      # Purines / Pyrimidines
-    "motif": (-2, 18),               # Motifs (Promoteur, Exon, Intron, etc.)
-    "gene": (0, 16),                 # Nœud Gene
-    "splicing": (2, 14),             # Épissage
-    "process": (4, 12),              # Processus (Méthylation, Réparation)
-    "correcteur": (6, 12),           # Code correcteur
-    "epigenetics": (8, 10),          # Modifications épigénétiques
-    "post_transcription": (10, 10),  # Régulation post-transcriptionnelle
-    "chromatin": (12, 10),           # Structure chromatinienne
-    "cis": (14, 12),                 # Régulation cis
-    "trans": (16, 14)                # Régulation trans
+    "virtual": "red",
+    "segment_3mer": "pink",
+    "base": "lightblue",
+    "classification": "lightgreen",
+    "splicing": "lime",
+    "motif": "orange",
+    "gene": "teal",
+    "process": "yellow",
+    "correcteur": "plum",
+    "epigenetics": "gold",
+    "post_transcription": "darkcyan",
+    "chromatin": "brown",
+    "cis": "violet",
+    "trans": "grey",
 }
-"""
 
 
-# Parametres des nodes et textes
+# Organisation des couches(x_coord, base_y, y_spacing) du graphe
+LAYER_CONFIG = {
+    "virtual":           (-12,  0, 100),   # start/end
+    "segment_3mer":      ( -8,  0, 10.5),  # codons (3-mers)
+    "base":              ( -4,  6, 200),   # A, C, G, T
+    "classification":    (  0,  5, 200),   # Purines, Pyrimidines
+    "motif":             (  4,  8, 200),   # Promoteur, Exon, Intron
+    "splicing":          (  8,  -100, 200),   # Spliceosome
+    "gene":              ( 12,  -100, 200),   # Gène
+    "process":           ( 16,  -50, 200),    # Méthylation, Réparation
+    "correcteur":        ( 20,  -105, 200),   # Code_Correcteur
+    "epigenetics":       ( 24,  3, 200),      # Histone_Acetylation
+    "post_transcription":( 28,  3, 200),
+    "chromatin":         ( 32,  7, 200),
+    "cis":               ( 33,  5, 200),   # Enhancer, Silencer
+    "trans":             ( 38,  5, 200),   # TF1, TF2
+}
+
+# Parametres des nodes et textes 
 NODE_SIZE = 400
 FONT_SIZE_NODE = 8
 FONT_SIZE_INTERACTION = 5
 FONT_COLOR = "red"
 OPTI_PATH = "blue"
+OPTI_PSIZE = 1.5
 
 # ----- Chemins et répertoires -----
 # Définir le dossier racine pour les logs (ici, un dossier 'logs' au même niveau que le projet)
@@ -83,9 +70,8 @@ LOG_FILE_MODE = 'w'  # 'w' pour écraser à chaque démarrage, 'a' pour ajouter
 
 # ----- Paramètres d'Optimisation -----
 # Coefficients pour la fonction de coût dans l'optimisation du graphe (moyenne), build, stabilité relation, taux erreur
-ALPHA = 0.2
-#BETA = 0.8
-BETA = 100
+ALPHA = 0.1
+BETA = 0.8
 GAMMA = 0.5
 
 # Message à traduire par défaut

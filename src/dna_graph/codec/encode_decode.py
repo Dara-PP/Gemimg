@@ -42,15 +42,17 @@ def decode_message_from_path(path, original_bases, original_length):
     return message
 
 def extract_base_path(full_path):
-    """Extrait du chemin complet en décomposant les noeuds de bases et codons."""
+    """Extrait du chemin complet en décomposant les noeuds de bases et codons.
+       Cette version gère les nœuds au format 'Seg(codon)_posX'."""
     base_path = []
     for node in full_path:
         if node in {"A", "T", "C", "G"}:
             base_path.append(node)
-        elif node.startswith("Seg(") and node.endswith(")"):
-            # Extraire le codon, puis ajouter chaque base du codon
-            codon = node[4:-1]
-            base_path.extend(list(codon))
+        elif node.startswith("Seg("):
+            # Trouver la parenthèse fermante pour extraire le codon
+            end_index = node.find(")")
+            if end_index != -1:
+                codon = node[4:end_index]
+                base_path.extend(list(codon))
     return base_path
-
 
