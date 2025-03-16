@@ -71,8 +71,17 @@ LOG_FILE_MODE = 'w'  # 'w' pour écraser à chaque démarrage, 'a' pour ajouter
 # ----- Paramètres d'Optimisation -----
 # Coefficients pour la fonction de coût dans l'optimisation du graphe (moyenne), build, stabilité relation, taux erreur
 ALPHA = 0.1
-BETA = 0.8
+BETA = 0.1
 GAMMA = 0.5
+
+# ----- Paramètres Gaussien -----
+DEFAULT_MUTATION_RATE = 0.01
+NUMB_TEST = 50
+SEED = 42
+NUMBER_TEST = 100
+
+# ----- Paramètres Graph 2-----
+NBR_BEST = 10
 
 # Message à traduire par défaut
 DEFAULT_MESSAGE = "world"

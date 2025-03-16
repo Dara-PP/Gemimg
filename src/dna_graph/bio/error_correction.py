@@ -1,4 +1,3 @@
-import logging
 import dna_graph.bio.constants as const
 
 def add_code_correcteur(G):
@@ -12,7 +11,7 @@ def add_code_correcteur(G):
     
     if "Methy" in G:
         G.add_edge("Code_Correcteur", "Methy", interaction="Corrige",
-                   weight_cost=const.DEFAULT_STABILITY_BUILD_CODE, 
+                   weight_cost=const.DEFAULT_COST_BUILD_CODE, 
                    weight_stability=const.DEFAULT_STABILITY_BUILD_CODE, 
                    weight_error=const.DEFAULT_ERROR_BUILD_CODE)
     if "Reparation" in G:

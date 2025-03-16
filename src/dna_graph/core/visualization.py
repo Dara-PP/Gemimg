@@ -163,6 +163,9 @@ def plot_gaussian_with_histogram(test_results, default_value, sigma, num_points=
     plt.show()
 
 def draw_layered_sequence_graph(sentence, word_results, n_best=10):
+    """
+    Dessine le 2eme graph qui est orienté
+    """
     # Séparer la phrase en mots
     words = sentence.split()
     

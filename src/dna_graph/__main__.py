@@ -25,7 +25,8 @@ from dna_graph.core.init_graph import init_graph
 from config.config import (
     LOG_FILE, LOG_LEVEL, LOG_FORMAT, LOG_FILE_MODE,
     ALPHA, BETA, GAMMA, DEFAULT_MESSAGE, MANDATORY_NODES, LAYER_CONFIG,
-    PROMOTER, TERMINATION_SIGNAL, ADRN
+    PROMOTER, TERMINATION_SIGNAL, ADRN, DEFAULT_MUTATION_RATE, NUMB_TEST, SEED,
+    NBR_BEST, NUMBER_TEST
 )
 
 
@@ -221,6 +222,17 @@ def draw(G, best_path, base_list, message, alpha, beta, gamma):
     logging.info(f"Message decode: {decoded_message}")
     print(f"Message decode: {decoded_message}")
 
+def gauss_kernel(message):
+    """
+    Test pour chaque mot de la phrase gauss kernel
+    """
+    all_results = gaussian_kernel_test_sentence(message, ALPHA, BETA, GAMMA, DEFAULT_MUTATION_RATE, NUMB_TEST, random_seed=SEED)
+    for word, results in all_results.items():
+        print(f"Résultats pour le mot '{word}':")
+        for res in results:
+            print(f"  Mutation rate: {res['mutation_rate']:.3f}, Score: {res['score']:.3f}")
+    
+
 def main():
     setup_logging()
     args = parse_arguments()
@@ -268,27 +280,16 @@ def main():
     except Exception as e:
         logging.error(f"Erreur lors du dessin du graphe : {e}")
         return
-    
+
     try:
-        # Exécution des tests gaussiens sur le message d'entrée
-        default_mutation_rate = 0.05  # Pour observer des variations
-        num_tests = 50
-        sentence = args.message
-        seed = 42  # Pour reproductibilité
-        
-        # Test pour chaque mot de la phrase
-        all_results = gaussian_kernel_test_sentence(sentence, ALPHA, BETA, GAMMA, default_mutation_rate, num_tests, random_seed=seed)
-        for word, results in all_results.items():
-            print(f"Résultats pour le mot '{word}':")
-            for res in results:
-                print(f"  Mutation rate: {res['mutation_rate']:.3f}, Score: {res['score']:.3f}")
-        
+        # Test avec plusieurs parametre
+        gauss_kernel(args.message)
         # Affichage optionnel de la distribution gaussienne avec histogramme pour l'ensemble du message
-        some_results = gaussian_kernel_test(args.message, ALPHA, BETA, GAMMA, default_mutation_rate, num_tests=100, random_seed=seed)
-        plot_gaussian_with_histogram(some_results, default_mutation_rate, sigma=0.005)
-        
+        some_results = gaussian_kernel_test(args.message, ALPHA, BETA, GAMMA, DEFAULT_MUTATION_RATE, NUMBER_TEST, random_seed=SEED)
+        plot_gaussian_with_histogram(some_results,  DEFAULT_MUTATION_RATE, sigma=0.005)
+
         # Générer des tests pour un mot unique et clusteriser les résultats
-        test_results = gaussian_kernel_test(args.message, ALPHA, BETA, GAMMA, default_mutation_rate, num_tests=100, random_seed=seed)
+        test_results = gaussian_kernel_test(args.message, ALPHA, BETA, GAMMA, DEFAULT_MUTATION_RATE, NUMBER_TEST, random_seed=SEED)
         best_results = cluster_results(test_results, n_clusters=5)
         for idx, res in enumerate(best_results):
             print(f"Cluster {res['cluster']}: alpha={res['alpha']:.3f}, beta={res['beta']:.3f}, gamma={res['gamma']:.3f}, mutation_rate={res['mutation_rate']:.3f}")
@@ -299,19 +300,17 @@ def main():
         plot_clusters(test_results, dimensions=3)
         
         # On exécute à nouveau un test gaussien sur le message pour une utilisation ultérieure 
-        test_results = gaussian_kernel_test(args.message, ALPHA, BETA, GAMMA, default_mutation_rate, num_tests=100, random_seed=seed)
+        test_results = gaussian_kernel_test(args.message, ALPHA, BETA, GAMMA, DEFAULT_MUTATION_RATE, NUMBER_TEST, random_seed=SEED)
             
         # Traitement pour le second graphe
-        n_best = 10  # Paramètre d'exemple pour le nombre de meilleurs résultats par mot
-        word_results = get_word_test_results(args.message, num_tests, n_best, ALPHA, BETA, GAMMA, default_mutation_rate, seed)
-        G2 = draw_layered_sequence_graph(args.message, word_results, n_best=n_best)
-        
-        
+        word_results = get_word_test_results(args.message, NUMB_TEST, NBR_BEST, ALPHA, BETA, GAMMA, DEFAULT_MUTATION_RATE, SEED)
+        G2 = draw_layered_sequence_graph(args.message, word_results, NBR_BEST) 
     except Exception as e:
         logging.exception("Erreur lors des tests gaussiens : %s", e)
 
     try:
         best_path_G2 = compute_on_layered_graph(G2, ALPHA, BETA, GAMMA, algorithm="dijkstra")
+        #  dijkstra   bellman_ford    astar    bfs    dfs
         if best_path_G2 is not None:
             logging.info(f"Chemin optimal sur le second graphe : {best_path_G2}")
             print(f"Chemin optimal sur le second graphe : {best_path_G2}")

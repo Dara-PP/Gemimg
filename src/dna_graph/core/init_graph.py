@@ -10,7 +10,7 @@ def init_graph():
     """
     Initialise et assemble le graphe complet en appelant
     les fonctions par couche.
-    Assemble le graphe de connaissance pour l'ADN en 6 couches + Noeuds additionnels :
+    Assemble le graphe de connaissance pour l'ADN en 9 couches + Noeuds additionnels :
     - Couche 1 : Bases nucléotidiques
     - Couche 2 : Classification des bases
     - Couche 3 : Complémentarité
