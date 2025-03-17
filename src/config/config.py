@@ -81,7 +81,7 @@ SEED = 42
 NUMBER_TEST = 100
 
 # ----- Paramètres Graph 2-----
-NBR_BEST = 10
+NBR_BEST = 15
 
 # Message à traduire par défaut
 DEFAULT_MESSAGE = "world"

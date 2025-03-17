@@ -1,8 +1,9 @@
 import numpy as np
 import difflib
 from dna_graph.codec.encode_decode import convert_message_to_bases
-from dna_graph.bio.tran_tran import modify_dna_sequence
 from sklearn.cluster import KMeans
+import dna_graph.bio.genetic_code as gen_code
+from dna_graph.codec.codon_graph import build_aa_to_codons
 
 def gaussian_kernel_test_sentence(sentence, default_alpha, default_beta, default_gamma, default_mutation_rate,
                                   num_tests=10, sigma_alpha=0.1, sigma_beta=0.1, sigma_gamma=0.1, sigma_mutation=0.005,
@@ -25,18 +26,17 @@ def gaussian_kernel_test_sentence(sentence, default_alpha, default_beta, default
         sentence_results[word] = results
     return sentence_results
 
-
 def gaussian_kernel_test(word, default_alpha, default_beta, default_gamma, default_mutation_rate,
                          num_tests=10, sigma_alpha=0.1, sigma_beta=0.1, sigma_gamma=0.1, sigma_mutation=0.005,
                          random_seed=None):
     """
-    Génère plusieurs variantes de la séquence correspondant à un mot en perturbant les paramètres
-    alpha, beta, gamma et le taux de mutation avec une distribution gaussienne.
+    Génère plusieurs variantes de la séquence correspondant à un mot en choisissant pour chaque codon
+    une alternative parmi les options codoniques disponibles (selon le code génétique).
     
     Paramètres :
       - word (str) : Le mot à tester.
       - default_alpha, default_beta, default_gamma (float) : Valeurs par défaut pour les paramètres.
-      - default_mutation_rate (float) : Taux de mutation par défaut.
+      - default_mutation_rate (float) : Taux de mutation par défaut (retourné mais non utilisé pour la modification).
       - num_tests (int) : Nombre d'échantillons à générer.
       - sigma_alpha, sigma_beta, sigma_gamma (float) : Écart-type des perturbations pour chaque paramètre.
       - sigma_mutation (float) : Écart-type de la perturbation pour le taux de mutation.
@@ -45,39 +45,57 @@ def gaussian_kernel_test(word, default_alpha, default_beta, default_gamma, defau
     Retourne :
       - results (list) : Liste de dictionnaires pour chaque test contenant :
           * 'alpha', 'beta', 'gamma' : Paramètres utilisés.
-          * 'mutation_rate' : Taux de mutation (compris entre 0 et 1).
-          * 'sequence' : Séquence modifiée.
-          * 'score' : Similarité (0 à 1) entre la séquence originale et la séquence modifiée.
+          * 'mutation_rate' : Taux de mutation (calculé mais non appliqué).
+          * 'sequence' : Séquence obtenue en choisissant aléatoirement parmi les codons alternatifs.
+          * 'score' : Similarité (0 à 1) entre la séquence originale et la séquence générée.
     """
-    #if random_seed is not None:
-        #np.random.seed(random_seed)
+    if random_seed is not None:
+        np.random.seed(random_seed)
         
     results = []
     # Conversion du mot en liste de bases puis en chaîne
     base_list = convert_message_to_bases(word)
     original_sequence = ''.join(base_list)
     
+    # Construction du mapping des acides aminés vers codons alternatifs (incluant les stop pour la fidélité)
+    aa_to_codons = build_aa_to_codons(gen_code.GENETIC_CODE, include_stop=True)
+    
+    # Découper la séquence originale en codons (groupes de 3 bases)
+    codons = [original_sequence[i:i+3] for i in range(0, len(original_sequence), 3)]
+    
     for _ in range(num_tests):
         # Perturber les paramètres par bruit gaussien
         alpha = np.random.normal(default_alpha, sigma_alpha)
         beta = np.random.normal(default_beta, sigma_beta)
         gamma = np.random.normal(default_gamma, sigma_gamma)
+        # Bien que le taux de mutation soit calculé, il ne sera pas appliqué ici
         mutation_rate = np.random.normal(default_mutation_rate, sigma_mutation)
-        # S'assurer que le taux de mutation reste dans [0, 1]
         mutation_rate = np.clip(mutation_rate, 0, 1)
         
-        # Appliquer les modifications sur la séquence
-        mutated_sequence = modify_dna_sequence(original_sequence, mutation_rate=mutation_rate)
+        new_sequence = ""
+        # Pour chaque codon du mot, choisir aléatoirement une alternative parmi celles disponibles
+        for codon in codons:
+            if len(codon) < 3:
+                new_sequence += codon
+                continue
+            aa = gen_code.GENETIC_CODE.get(codon, None)
+            if aa is not None:
+                alternatives = aa_to_codons.get(aa, [codon])
+            else:
+                alternatives = [codon]
+            # Choisir aléatoirement parmi les alternatives (ceci peut donner un codon différent même si le mot est court)
+            chosen_codon = np.random.choice(alternatives)
+            new_sequence += chosen_codon
         
-        # Calcul du score de similarité entre séquence originale et modifiée
-        score = difflib.SequenceMatcher(None, original_sequence, mutated_sequence).ratio()
+        # Calcul du score de similarité entre la séquence originale et la séquence générée
+        score = difflib.SequenceMatcher(None, original_sequence, new_sequence).ratio()
         
         results.append({
             'alpha': alpha,
             'beta': beta,
             'gamma': gamma,
             'mutation_rate': mutation_rate,
-            'sequence': mutated_sequence,
+            'sequence': new_sequence,
             'score': score
         })
         

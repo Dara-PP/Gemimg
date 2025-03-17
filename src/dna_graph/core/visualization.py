@@ -164,14 +164,14 @@ def plot_gaussian_with_histogram(test_results, default_value, sigma, num_points=
 
 def draw_layered_sequence_graph(sentence, word_results, n_best=10):
     """
-    Dessine le 2eme graph qui est orienté
+    Dessine le 2ème graphe qui est orienté
     """
     # Séparer la phrase en mots
     words = sentence.split()
     
     # Créer un graphe orienté pour représenter le chemin
     G = nx.DiGraph()
-    layers = []  # Liste de listes de noeuds par couche
+    layers = []  # Liste de listes de nœuds par couche
     
     for i, word in enumerate(words):
         results = word_results.get(word, [])
@@ -210,6 +210,7 @@ def draw_layered_sequence_graph(sentence, word_results, n_best=10):
     layer_colors = plt.cm.viridis(np.linspace(0, 1, len(layers)))
     node_colors = {}
     
+    # Positionner les nœuds de chaque couche
     for i, layer_nodes in enumerate(layers):
         x = i * layer_spacing
         k = len(layer_nodes)
@@ -218,15 +219,43 @@ def draw_layered_sequence_graph(sentence, word_results, n_best=10):
             pos[node] = (x, y)
             node_colors[node] = layer_colors[i]
     
+    # --- Ajout de nœuds fictifs ---
+    start_layer = 0
+    end_layer = len(layers) - 1
+
+    # Créer le nœud fictif de départ avec un label explicite
+    G.add_node("start_fictif", type="virtual", label="Start Fictif", word="Start")
+    for node in layers[start_layer]:
+        G.add_edge("start_fictif", node, interaction="virtual", weight_cost=0.01, weight_stability=1.0, weight_error=0.0)
+
+    # Créer le nœud fictif d'arrivée avec un label explicite
+    G.add_node("end_fictif", type="virtual", label="End Fictif", word="End")
+    for node in layers[end_layer]:
+        G.add_edge(node, "end_fictif", interaction="virtual", weight_cost=0.01, weight_stability=1.0, weight_error=0.0)
+    
+    # Attribuer une position et une couleur aux nœuds fictifs
+    pos["start_fictif"] = (-layer_spacing, 0)               # À gauche de la première couche
+    pos["end_fictif"] = ((len(layers)) * layer_spacing, 0)    # À droite de la dernière couche
+    node_colors["start_fictif"] = "red"
+    node_colors["end_fictif"] = "red"
+
     plt.figure(figsize=(12, 8))
-    nx.draw_networkx_nodes(G, pos, node_color=[node_colors[n] for n in G.nodes()], node_size=1500)
+    nx.draw_networkx_nodes(G, pos, node_color=[node_colors.get(n, "gray") for n in G.nodes()], node_size=1500)
     nx.draw_networkx_edges(G, pos, arrowstyle='->', arrowsize=20)
+    
+    # Préparer les labels
     node_labels = {}
     for node, data in G.nodes(data=True):
-        label = (f"{data.get('word')}\nSeq: {data.get('sequence')}\nScore: {data.get('score'):.2f}\n"
-                 f"(α={data.get('alpha'):.2f}, β={data.get('beta'):.2f}, γ={data.get('gamma'):.2f})\n"
-                 f"Mut: {data.get('mutation_rate'):.2f}")
-        node_labels[node] = label
+        # Si c'est un nœud fictif, utiliser le label explicite
+        if data.get("type") == "virtual":
+            node_labels[node] = data.get("label")
+        else:
+            node_labels[node] = (
+                f"{data.get('word')}\nSeq: {data.get('sequence')}\nScore: {data.get('score'):.2f}\n"
+                f"(α={data.get('alpha'):.2f}, β={data.get('beta'):.2f}, γ={data.get('gamma'):.2f})\n"
+                f"Mut: {data.get('mutation_rate'):.2f}"
+            )
+    
     nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=8)
     plt.title("Graphe en couches des meilleures séquences par mot")
     plt.axis('off')

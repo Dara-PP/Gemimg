@@ -309,7 +309,7 @@ def main():
         logging.exception("Erreur lors des tests gaussiens : %s", e)
 
     try:
-        best_path_G2 = compute_on_layered_graph(G2, ALPHA, BETA, GAMMA, algorithm="dijkstra")
+        best_path_G2 = compute_on_layered_graph(G2, ALPHA, BETA, GAMMA, algorithm="bellman_ford")
         #  dijkstra   bellman_ford    astar    bfs    dfs
         if best_path_G2 is not None:
             logging.info(f"Chemin optimal sur le second graphe : {best_path_G2}")

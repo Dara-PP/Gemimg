@@ -1,5 +1,6 @@
 import networkx as nx
 from dna_graph.bio.gene_expression import simulate_gene_expression
+import numpy as np
 
 def multi_criteria_weight(u, v, data, alpha, beta, gamma):
     """
@@ -146,55 +147,88 @@ def astar(G, start_node, end_node, mandatory_nodes, alpha, beta, gamma, heuristi
     full_path.extend(segment[1:])
     return full_path
 
-def compute_on_layered_graph(G, global_alpha, global_beta, global_gamma, algorithm, heuristic=lambda u, v: 0):
-    # Regrouper les nœuds par couche à partir de leur nom "i_j"
+def compute_on_layered_graph(G, global_alpha, global_beta, global_gamma, algorithm,
+                             heuristic=lambda u, v: 0, noise_scale=0.01, add_noise=True):
+    """
+    Calcule le chemin optimal sur un graphe en couches en utilisant une fonction de coût multi-critères.
+    
+    Paramètres :
+      - G : le graphe (NetworkX)
+      - global_alpha, global_beta, global_gamma : pondérations globales
+      - algorithm : algorithme à utiliser ('dijkstra', 'bellman_ford', 'astar', 'bfs', 'dfs')
+      - heuristic : fonction heuristique pour A* (défaut : retourne 0)
+      - noise_scale : échelle du bruit aléatoire pour casser l'homogénéité (défaut : 0.01)
+      - add_noise : booléen pour activer/désactiver l'ajout de bruit (défaut : True)
+    
+    Retourne :
+      - best_path : chemin optimal trouvé ou None en cas d'erreur.
+    """
+
+    # Regrouper les nœuds par couche à partir de leur nom au format "i_..."
     layers = {}
     for node in G.nodes():
         try:
             layer_index = int(node.split('_')[0])
             layers.setdefault(layer_index, []).append(node)
         except (ValueError, IndexError):
-            continue  # Ignorer les noeuds dont le nom ne suit pas le format
+            continue  # Ignorer les nœuds dont le nom ne suit pas le format
 
     if not layers:
         print("Aucune information de couche n'a pu être extraite.")
         return None
 
+    # Définir les nœuds fictifs de départ et d'arrivée et les ajouter s'ils n'existent pas
+    start = "start_fictif"
+    end = "end_fictif"
+    if start not in G:
+        G.add_node(start, type="virtual", label="Start Fictif")
+    if end not in G:
+        G.add_node(end, type="virtual", label="End Fictif")
+
+    # Relier le nœud fictif de départ aux nœuds de la première couche et de la dernière couche au nœud fictif d'arrivée
     start_layer = min(layers.keys())
     end_layer = max(layers.keys())
-    start = layers[start_layer][0]
-    end = layers[end_layer][0]
+    for node in layers[start_layer]:
+        if not G.has_edge(start, node):
+            G.add_edge(start, node, weight_cost=0.01, weight_stability=1.0, weight_error=0.0)
+    for node in layers[end_layer]:
+        if not G.has_edge(node, end):
+            G.add_edge(node, end, weight_cost=0.01, weight_stability=1.0, weight_error=0.0)
 
-    # Fonction de coût combinant les poids d'arête et les attributs des noeuds
+    # Définir la fonction de coût multi-critères
     def multi_criteria(u, v, data):
-        # Valeurs d'arête avec valeurs par défaut si non définies
+        # Récupérer les poids de l'arête avec des valeurs par défaut
         cost_edge = data.get("weight_cost", 1.0)
         stability_edge = data.get("weight_stability", 1.0)
         error_edge = data.get("weight_error", 0.0)
-        # Valeurs du noeud de destination (vous pouvez aussi combiner source et destination)
+        # Récupérer les attributs du nœud de destination avec des valeurs par défaut
         node_data = G.nodes[v]
         node_alpha = node_data.get("alpha", 1.0)
         node_beta = node_data.get("beta", 1.0)
         node_gamma = node_data.get("gamma", 1.0)
-        # Combiner les pondérations globales et celles du noeud
+        # Calcul du coût : on minimise cost et error, et on maximise la stabilité via (1 - stabilité)
         cost = (global_alpha * node_alpha) * cost_edge + \
                (global_beta * node_beta) * (1 - stability_edge) + \
                (global_gamma * node_gamma) * error_edge
-        return cost
+        # Ajouter un bruit pour casser l'homogénéité
+        noise = np.random.uniform(0, noise_scale) if add_noise else 0
+        return cost + noise
 
+    # Sélectionner l'algorithme d'optimisation en fonction du paramètre 'algorithm'
     try:
-        if algorithm.lower() == "dijkstra":
+        algo = algorithm.lower()
+        if algo == "dijkstra":
             best_path = nx.dijkstra_path(G, start, end, weight=lambda u, v, d: multi_criteria(u, v, d))
-        elif algorithm.lower() == "bellman_ford":
+        elif algo == "bellman_ford":
             best_path = nx.bellman_ford_path(G, start, end, weight=lambda u, v, d: multi_criteria(u, v, d))
-        elif algorithm.lower() == "astar":
+        elif algo == "astar":
             best_path = nx.astar_path(G, start, end, heuristic=heuristic,
                                       weight=lambda u, v, d: multi_criteria(u, v, d))
-        elif algorithm.lower() == "bfs":
+        elif algo == "bfs":
             best_path = nx.shortest_path(G, start, end)
-        elif algorithm.lower() == "dfs":
-            best_path = list(nx.dfs_tree(G, source=start).nodes())
-            if end not in best_path:
+        elif algo == "dfs":
+            dfs_nodes = list(nx.dfs_tree(G, source=start).nodes())
+            if end not in dfs_nodes:
                 raise ValueError(f"Le nœud {end} n'est pas accessible en DFS depuis {start}.")
             best_path = nx.shortest_path(G, start, end)
         else:
