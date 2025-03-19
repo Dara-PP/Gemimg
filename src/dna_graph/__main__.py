@@ -18,7 +18,7 @@ from dna_graph.core.visualization import (
 )
 from dna_graph.codec.codon_graph import add_codon_subgraph_bio, build_aa_to_codons
 from dna_graph.codec.encode_decode import convert_message_to_bases, decode_message_from_path, extract_base_path
-from dna_graph.core.optimisation import compute_on_layered_graph, compute_path_weight, dijkstra, bellman_ford, astar
+from dna_graph.core.optimisation import compute_on_layered_graph, compute_path_weight, dijkstra, bellman_ford, astar, display_floyd_warshall_matrix, display_johnson_matrix
 from dna_graph.bio.gene_expression import simulate_gene_expression
 from dna_graph.contraintes.gene_contraintes import validate_gene_expression_constraints
 from dna_graph.core.init_graph import init_graph
@@ -26,7 +26,7 @@ from config.config import (
     LOG_FILE, LOG_LEVEL, LOG_FORMAT, LOG_FILE_MODE,
     ALPHA, BETA, GAMMA, DEFAULT_MESSAGE, MANDATORY_NODES, LAYER_CONFIG,
     PROMOTER, TERMINATION_SIGNAL, ADRN, DEFAULT_MUTATION_RATE, NUMB_TEST, SEED,
-    NBR_BEST, NUMBER_TEST
+    NBR_BEST, NUMBER_TEST, ALG1, ALG2, ALG3, ALG4, ALG5, ALG6, ALG7 
 )
 
 
@@ -227,11 +227,103 @@ def gauss_kernel(message):
     Test pour chaque mot de la phrase gauss kernel
     """
     all_results = gaussian_kernel_test_sentence(message, ALPHA, BETA, GAMMA, DEFAULT_MUTATION_RATE, NUMB_TEST, random_seed=SEED)
-    for word, results in all_results.items():
+    """for word, results in all_results.items():
         print(f"Résultats pour le mot '{word}':")
         for res in results:
             print(f"  Mutation rate: {res['mutation_rate']:.3f}, Score: {res['score']:.3f}")
+    """
+def aggregate_sequence(G, path):
+    """
+    Agrège les séquences de chaque noeud du chemin.
+    On ignore les noeuds fictifs et les noeuds sans séquence valide (ex. "—").
     
+    Paramètres
+    ----------
+    G : nx.DiGraph
+        Le graphe contenant les noeuds.
+    path : list
+        La liste des noeuds formant le chemin.
+    
+    Retourne
+    -------
+    str
+        La séquence totale obtenue par concaténation des séquences de chaque nœud.
+    """
+    full_sequence = ""
+    for node in path:
+        seq = G.nodes[node].get("sequence", "")
+        if seq and seq != "—":
+            full_sequence += seq
+    return full_sequence
+
+def run_all_algorithms_on_layered_graph(G, ALPHA, BETA, GAMMA, algorithms, chosen_alg,
+                                        heuristic=lambda u, v: 0, noise_scale=0.01, add_noise=True):
+    """
+    Exécute plusieurs algorithmes pour calculer le chemin optimal sur un graphe en couches,
+    et retourne le résultat (chemin, séquence totale, temps d'exécution et protéine) de l'algorithme choisi.
+    
+    Paramètres :
+      - G : le graphe (NetworkX)
+      - ALPHA, BETA, GAMMA : pondérations globales pour la fonction de coût
+      - algorithms : liste des noms d'algorithmes à tester 
+          (ex. ["dijkstra", "bellman_ford", "astar", "bfs", "dfs", "floyd_warshall", "johnson"])
+      - chosen_alg : algorithme dont le résultat doit être affiché (ex. "astar")
+      - heuristic : fonction heuristique pour A* (défaut : retourne 0)
+      - noise_scale : échelle du bruit aléatoire (défaut : 0.01)
+      - add_noise : booléen pour activer/désactiver l'ajout de bruit (défaut : True)
+      
+    Retourne :
+      Un dictionnaire contenant :
+        - 'path' : le chemin optimal trouvé pour l'algorithme choisi
+        - 'total_sequence' : la séquence agrégée le long du chemin
+        - 'execution_time' : temps d'exécution de cet algorithme
+        - 'protein' : protéine synthétisée à partir de la séquence
+    """
+
+    results = {}
+    execution_times = {}
+    
+    # Exécuter tous les algorithmes et stocker leurs résultats et temps d'exécution
+    for alg in algorithms:
+        start_time = time.perf_counter()
+        path = compute_on_layered_graph(G, ALPHA, BETA, GAMMA, alg, heuristic, noise_scale, add_noise)
+        end_time = time.perf_counter()
+        execution_time = end_time - start_time
+        results[alg.lower()] = path
+        execution_times[alg.lower()] = execution_time
+        print(f"Algorithme {alg} exécuté en {execution_time:.4f} secondes")
+    
+    # Récupérer et afficher le résultat de l'algorithme choisi
+    chosen_alg_key = chosen_alg.lower()
+    if chosen_alg_key in results and results[chosen_alg_key] is not None:
+        best_path = results[chosen_alg_key]
+        print(f"\nChemin optimal pour {chosen_alg} : {best_path}")
+        
+        # Agréger les séquences le long du chemin
+        total_sequence = aggregate_sequence(G, best_path)
+        print("Séquence totale :", total_sequence)
+        
+        # Simuler l'expression génétique pour obtenir la protéine
+        from config.config import PROMOTER, ADRN, TERMINATION_SIGNAL
+        from dna_graph.bio.gene_expression import simulate_gene_expression
+        dna_sequence = PROMOTER + ADRN + total_sequence + TERMINATION_SIGNAL
+        protein = simulate_gene_expression(dna_sequence)
+        print("Protéine synthétisée :", protein)
+        
+        # Afficher les matrices si l'algorithme choisi est, par exemple, "alg6"
+        if chosen_alg_key == "alg6":
+            display_floyd_warshall_matrix(G)
+            display_johnson_matrix(G)
+            
+        return {
+            'path': best_path,
+            'total_sequence': total_sequence,
+            'execution_time': execution_times[chosen_alg_key],
+            'protein': protein
+        }
+    else:
+        print(f"Aucun chemin n'a pu être trouvé pour l'algorithme {chosen_alg}")
+        return None
 
 def main():
     setup_logging()
@@ -309,16 +401,25 @@ def main():
         logging.exception("Erreur lors des tests gaussiens : %s", e)
 
     try:
-        best_path_G2 = compute_on_layered_graph(G2, ALPHA, BETA, GAMMA, algorithm="bellman_ford")
-        #  dijkstra   bellman_ford    astar    bfs    dfs
+        # Exemple d'appel dans main()
+        algorithms = ["dijkstra", "bellman_ford", "astar", "bfs", "dfs", "floyd_warshall", "johnson"]
+        chosen_alg = "floyd_warshall"  # Remplacez par l'algorithme que je souhaite afficher
+        best_path_G2 = run_all_algorithms_on_layered_graph(G2, ALPHA, BETA, GAMMA, algorithms, chosen_alg)
+
         if best_path_G2 is not None:
             logging.info(f"Chemin optimal sur le second graphe : {best_path_G2}")
             print(f"Chemin optimal sur le second graphe : {best_path_G2}")
             
+            total_sequence = aggregate_sequence(G2, best_path_G2)
+            print("Séquence totale :", total_sequence)
+            dna_sequence_G2 = PROMOTER + ADRN + total_sequence + TERMINATION_SIGNAL
+            protein_G2 = simulate_gene_expression(dna_sequence_G2)
+            print("Protéine synthétisée pour le graphe 2 :", protein_G2)
         else:
             logging.error("Aucun chemin n'a pu être trouvé sur le second graphe.")
     except Exception as e:
         logging.error(f"Erreur lors du calcul du chemin sur le second graphe : {e}")
 
+    
 if __name__ == '__main__':
     main()

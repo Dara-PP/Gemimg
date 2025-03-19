@@ -73,6 +73,13 @@ LOG_FILE_MODE = 'w'  # 'w' pour écraser à chaque démarrage, 'a' pour ajouter
 ALPHA = 0.1
 BETA = 0.1
 GAMMA = 0.5
+ALG1 = "dijkstra"
+ALG2 = "bellman_ford"                  
+ALG3 = "astar"
+ALG4 = "bfs"
+ALG5 = "dfs"
+ALG6 = "floyd_warshall"
+ALG7 = "johnson"
 
 # ----- Paramètres Gaussien -----
 DEFAULT_MUTATION_RATE = 0.01
@@ -81,7 +88,7 @@ SEED = 42
 NUMBER_TEST = 100
 
 # ----- Paramètres Graph 2-----
-NBR_BEST = 15
+NBR_BEST = 7 # "7" graph sur diapo 
 
 # Message à traduire par défaut
 DEFAULT_MESSAGE = "world"

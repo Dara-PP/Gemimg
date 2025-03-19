@@ -2,3 +2,4 @@ pytest
 networkx
 matplotlib
 scikit-learn
+pandas

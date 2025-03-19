@@ -164,101 +164,158 @@ def plot_gaussian_with_histogram(test_results, default_value, sigma, num_points=
 
 def draw_layered_sequence_graph(sentence, word_results, n_best=10):
     """
-    Dessine le 2ème graphe qui est orienté
+    Construit et dessine un graphe orienté en couches, où chaque couche représente
+    un mot de la phrase et contient jusqu'à n_best candidats. Chaque candidat
+    comporte une séquence, un score et des paramètres (alpha, beta, gamma, mutation_rate).
+
+    Paramètres
+    ----------
+    sentence : str
+        La phrase d'entrée, découpée en mots.
+    word_results : dict
+        Un dictionnaire {mot: [résultats]} où chaque résultat contient au moins :
+            - 'sequence'
+            - 'score'
+            - 'alpha', 'beta', 'gamma'
+            - 'mutation_rate'
+    n_best : int
+        Nombre maximum de candidats à conserver par mot.
+
+    Retourne
+    -------
+    nx.DiGraph
+        Le graphe orienté en couches.
     """
     # Séparer la phrase en mots
     words = sentence.split()
-    
+
     # Créer un graphe orienté pour représenter le chemin
     G = nx.DiGraph()
     layers = []  # Liste de listes de nœuds par couche
-    
+
+    # Remplir chaque couche avec les meilleurs candidats (n_best) pour chaque mot
     for i, word in enumerate(words):
         results = word_results.get(word, [])
         if not results:
             node_id = f"{i}_0"
-            G.add_node(node_id, word=word, sequence="—", score=0, alpha=None, beta=None, gamma=None, mutation_rate=None)
+            G.add_node(node_id,
+                       word=word,
+                       sequence="—",
+                       score=0,
+                       alpha=None,
+                       beta=None,
+                       gamma=None,
+                       mutation_rate=None)
             layers.append([node_id])
             continue
 
+        # Trier par score décroissant et garder les n_best
         sorted_results = sorted(results, key=lambda r: r.get('score', 0), reverse=True)
         best_candidates = sorted_results[:n_best]
+
         current_layer = []
         for j, res in enumerate(best_candidates):
             node_id = f"{i}_{j}"
-            G.add_node(node_id,
-                       word=word,
-                       sequence=res.get('sequence', ''),
-                       score=res.get('score', 0),
-                       alpha=res.get('alpha'),
-                       beta=res.get('beta'),
-                       gamma=res.get('gamma'),
-                       mutation_rate=res.get('mutation_rate'))
+            G.add_node(
+                node_id,
+                word=word,
+                sequence=res.get('sequence', ''),
+                score=res.get('score', 0),
+                alpha=res.get('alpha'),
+                beta=res.get('beta'),
+                gamma=res.get('gamma'),
+                mutation_rate=res.get('mutation_rate')
+            )
             current_layer.append(node_id)
+
         layers.append(current_layer)
-    
+
     # Connecter chaque couche à la suivante
     for i in range(len(layers) - 1):
         for node_u in layers[i]:
-            for node_v in layers[i+1]:
+            for node_v in layers[i + 1]:
                 G.add_edge(node_u, node_v)
-    
-    # Générer des positions et attribuer une couleur différente par couche
+
+    # Générer des positions et une couleur différente par couche
     pos = {}
-    layer_spacing = 4
-    vertical_spacing = 2
+    layer_spacing = 6
+    vertical_spacing = 3
     layer_colors = plt.cm.viridis(np.linspace(0, 1, len(layers)))
     node_colors = {}
-    
-    # Positionner les nœuds de chaque couche
+
     for i, layer_nodes in enumerate(layers):
         x = i * layer_spacing
         k = len(layer_nodes)
-        ys = np.linspace((k-1)*vertical_spacing/2, -(k-1)*vertical_spacing/2, k) if k > 0 else [0]
+        # Positionner les nœuds de haut en bas
+        if k > 0:
+            ys = np.linspace((k - 1) * vertical_spacing / 2, -(k - 1) * vertical_spacing / 2, k)
+        else:
+            ys = [0]
         for node, y in zip(layer_nodes, ys):
             pos[node] = (x, y)
             node_colors[node] = layer_colors[i]
-    
-    # --- Ajout de nœuds fictifs ---
+
+    # --- Ajouter des noeuds fictifs de début et de fin ---
     start_layer = 0
     end_layer = len(layers) - 1
 
-    # Créer le nœud fictif de départ avec un label explicite
-    G.add_node("start_fictif", type="virtual", label="Start Fictif", word="Start")
+    # Noeud fictif de départ
+    G.add_node("start", type="virtual", label="Start", word="Start")
     for node in layers[start_layer]:
-        G.add_edge("start_fictif", node, interaction="virtual", weight_cost=0.01, weight_stability=1.0, weight_error=0.0)
+        G.add_edge("start", node, interaction="virtual",
+                   weight_cost=0.01, weight_stability=1.0, weight_error=0.0)
 
-    # Créer le nœud fictif d'arrivée avec un label explicite
-    G.add_node("end_fictif", type="virtual", label="End Fictif", word="End")
+    # Noeud fictif d'arrivée
+    G.add_node("end", type="virtual", label="End", word="End")
     for node in layers[end_layer]:
-        G.add_edge(node, "end_fictif", interaction="virtual", weight_cost=0.01, weight_stability=1.0, weight_error=0.0)
-    
-    # Attribuer une position et une couleur aux nœuds fictifs
-    pos["start_fictif"] = (-layer_spacing, 0)               # À gauche de la première couche
-    pos["end_fictif"] = ((len(layers)) * layer_spacing, 0)    # À droite de la dernière couche
-    node_colors["start_fictif"] = "red"
-    node_colors["end_fictif"] = "red"
+        G.add_edge(node, "end", interaction="virtual",
+                   weight_cost=0.01, weight_stability=1.0, weight_error=0.0)
 
+    # Position et couleur pour les nœuds fictifs
+    pos["start"] = (-layer_spacing, 0)
+    pos["end"] = (len(layers) * layer_spacing, 0)
+    node_colors["start"] = "orange"
+    node_colors["end"] = "orange"
+
+    # Dessin du graphe
     plt.figure(figsize=(12, 8))
-    nx.draw_networkx_nodes(G, pos, node_color=[node_colors.get(n, "gray") for n in G.nodes()], node_size=1500)
-    nx.draw_networkx_edges(G, pos, arrowstyle='->', arrowsize=20)
-    
-    # Préparer les labels
+
+    # Dessin des nœuds
+    nx.draw_networkx_nodes(
+        G, pos,
+        node_color=[node_colors.get(n, "gray") for n in G.nodes()],
+        node_size=1000,
+        alpha=0.9
+    )
+
+    # Dessin des arêtes
+    nx.draw_networkx_edges(
+        G, pos,
+        arrowstyle='->',
+        arrowsize=15,
+        alpha=0.4
+    )
+
+    # Préparation des labels
     node_labels = {}
     for node, data in G.nodes(data=True):
-        # Si c'est un nœud fictif, utiliser le label explicite
+        # Label spécial pour les nœuds fictifs
         if data.get("type") == "virtual":
             node_labels[node] = data.get("label")
         else:
             node_labels[node] = (
-                f"{data.get('word')}\nSeq: {data.get('sequence')}\nScore: {data.get('score'):.2f}\n"
+                f"{data.get('word')}\n"
+                f"Seq: {data.get('sequence')}\n"
+                f"Score: {data.get('score'):.2f}\n"
                 f"(α={data.get('alpha'):.2f}, β={data.get('beta'):.2f}, γ={data.get('gamma'):.2f})\n"
                 f"Mut: {data.get('mutation_rate'):.2f}"
             )
-    
-    nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=8)
+
+    # Dessin des labels
+    nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=7)
+
     plt.title("Graphe en couches des meilleures séquences par mot")
     plt.axis('off')
     plt.show()
-    
-    return G  # Retourner le graphe pour l'utiliser dans la recherche
+
+    return G

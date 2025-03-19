@@ -1,6 +1,8 @@
 import networkx as nx
 from dna_graph.bio.gene_expression import simulate_gene_expression
 import numpy as np
+import pandas as pd
+
 
 def multi_criteria_weight(u, v, data, alpha, beta, gamma):
     """
@@ -151,19 +153,19 @@ def compute_on_layered_graph(G, global_alpha, global_beta, global_gamma, algorit
                              heuristic=lambda u, v: 0, noise_scale=0.01, add_noise=True):
     """
     Calcule le chemin optimal sur un graphe en couches en utilisant une fonction de coût multi-critères.
-    
+
     Paramètres :
       - G : le graphe (NetworkX)
       - global_alpha, global_beta, global_gamma : pondérations globales
-      - algorithm : algorithme à utiliser ('dijkstra', 'bellman_ford', 'astar', 'bfs', 'dfs')
+      - algorithm : algorithme à utiliser ('dijkstra', 'bellman_ford', 'astar', 'bfs', 'dfs',
+                    'floyd_warshall', 'johnson')
       - heuristic : fonction heuristique pour A* (défaut : retourne 0)
       - noise_scale : échelle du bruit aléatoire pour casser l'homogénéité (défaut : 0.01)
       - add_noise : booléen pour activer/désactiver l'ajout de bruit (défaut : True)
-    
+
     Retourne :
       - best_path : chemin optimal trouvé ou None en cas d'erreur.
     """
-
     # Regrouper les nœuds par couche à partir de leur nom au format "i_..."
     layers = {}
     for node in G.nodes():
@@ -171,13 +173,13 @@ def compute_on_layered_graph(G, global_alpha, global_beta, global_gamma, algorit
             layer_index = int(node.split('_')[0])
             layers.setdefault(layer_index, []).append(node)
         except (ValueError, IndexError):
-            continue  # Ignorer les nœuds dont le nom ne suit pas le format
+            continue  # Ignorer les noeuds dont le nom ne suit pas le format
 
     if not layers:
         print("Aucune information de couche n'a pu être extraite.")
         return None
 
-    # Définir les nœuds fictifs de départ et d'arrivée et les ajouter s'ils n'existent pas
+    # Définir les noeuds fictifs de départ et d'arrivée et les ajouter s'ils n'existent pas
     start = "start_fictif"
     end = "end_fictif"
     if start not in G:
@@ -206,7 +208,7 @@ def compute_on_layered_graph(G, global_alpha, global_beta, global_gamma, algorit
         node_alpha = node_data.get("alpha", 1.0)
         node_beta = node_data.get("beta", 1.0)
         node_gamma = node_data.get("gamma", 1.0)
-        # Calcul du coût : on minimise cost et error, et on maximise la stabilité via (1 - stabilité)
+        # Calcul du coût : minimiser coût et erreur, maximiser la stabilité (via 1 - stabilité)
         cost = (global_alpha * node_alpha) * cost_edge + \
                (global_beta * node_beta) * (1 - stability_edge) + \
                (global_gamma * node_gamma) * error_edge
@@ -231,9 +233,103 @@ def compute_on_layered_graph(G, global_alpha, global_beta, global_gamma, algorit
             if end not in dfs_nodes:
                 raise ValueError(f"Le nœud {end} n'est pas accessible en DFS depuis {start}.")
             best_path = nx.shortest_path(G, start, end)
+        elif algo == "floyd_warshall":
+            best_path = floyd_warshall(G, start, end, global_alpha, global_beta, global_gamma)
+        elif algo == "johnson":
+            best_path = johnson(G, start, end, global_alpha, global_beta, global_gamma)
         else:
             raise ValueError(f"Algorithme non supporté : {algorithm}")
         return best_path
     except Exception as e:
         print("Erreur lors de la recherche sur le second graphe :", e)
         return None
+
+
+# ---- Algorithme Floyd-Warshall ---- #
+def floyd_warshall(G, source, target, alpha, beta, gamma):
+    """
+    Calcule le chemin optimal entre source et target en utilisant l'algorithme de Floyd-Warshall
+    avec la fonction de coût multi-critères.
+    
+    La fonction de coût utilisée est : 
+      cost = α * (coût) + β * (1 – stabilité) + γ * (erreur)
+    """
+    def cost_func(u, v, data):
+        c = data.get("weight_cost", 0.0)
+        s = data.get("weight_stability", 0.0)
+        e = data.get("weight_error", 0.0)
+        return alpha * c + beta * (1 - s) + gamma * e
+
+    # Calculer les prédécesseurs et distances pour tous les couples de nœuds
+    pred, dist = nx.floyd_warshall_predecessor_and_distance(G, weight=lambda u, v, d: cost_func(u, v, d))
+    try:
+        path = nx.reconstruct_path(source, target, pred)
+    except Exception as e:
+        path = None
+    return path
+
+# ---- Algorithme Johnson ---- #
+def johnson(G, source, target, alpha, beta, gamma):
+    """
+    Calcule le chemin optimal entre source et target en utilisant l'algorithme de Johnson
+    avec la fonction de coût multi-critères.
+    
+    La fonction de coût utilisée est :
+      cost = α * (coût) + β * (1 – stabilité) + γ * (erreur)
+    """
+    def cost_func(u, v, d):
+        c = d.get("weight_cost", 0.0)
+        s = d.get("weight_stability", 0.0)
+        e = d.get("weight_error", 0.0)
+        return alpha * c + beta * (1 - s) + gamma * e
+
+    try:
+        # Utilise l'algorithme Johnson pour trouver le plus court chemin entre source et target
+        path = nx.shortest_path(G, source=source, target=target, weight=cost_func, method='johnson')
+    except Exception as e:
+        path = None
+    return path
+
+def cost_func(u, v, data):
+    """
+    Fonction de coût pour les arêtes.
+    Pour l'exemple, on utilise des coefficients unitaires (1) pour simplifier.
+    Adaptez si besoin avec vos coefficients (alpha, beta, gamma).
+    """
+    cost_edge = data.get("weight_cost", 1.0)
+    stability_edge = data.get("weight_stability", 1.0)
+    error_edge = data.get("weight_error", 0.0)
+    return cost_edge + (1 - stability_edge) + error_edge
+
+def display_floyd_warshall_matrix(G):
+    """
+    Calcule la matrice des distances avec Floyd-Warshall et l'affiche sous forme de DataFrame.
+    """
+    # Calcul des distances avec Floyd-Warshall
+    distances = dict(nx.floyd_warshall(G, weight=lambda u, v, d: cost_func(u, v, d)))
+    
+    # Création d'une liste triée de tous les nœuds
+    nodes = sorted(G.nodes())
+    # Construction de la matrice
+    matrix = {u: {v: distances[u].get(v, np.inf) for v in nodes} for u in nodes}
+    
+    df = pd.DataFrame(matrix)
+    print("Matrice de distances - Floyd Warshall")
+    print(df)
+    return df
+
+def display_johnson_matrix(G):
+    """
+    Calcule la matrice des distances avec l'algorithme de Johnson et l'affiche.
+    """
+    # Calcul des distances avec Johnson
+    distances = nx.johnson(G, weight=lambda u, v, d: cost_func(u, v, d))
+    
+    nodes = sorted(G.nodes())
+    matrix = {u: {v: distances[u].get(v, np.inf) for v in nodes} for u in nodes}
+    
+    df = pd.DataFrame(matrix)
+    print("Matrice de distances - Johnson")
+    print(df)
+    return df
+
